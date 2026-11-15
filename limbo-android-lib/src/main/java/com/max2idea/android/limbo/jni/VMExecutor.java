@@ -547,6 +547,21 @@ private String getQemuLibrary() {
 
     public void addHardDisk(ArrayList<String> paramsList, String imagePath, int index, String hdInterface) {
         if (imagePath != null && !imagePath.trim().equals("")) {
+            // On AArch64 virt there is no legacy IDE controller. Use a PCI
+            // VirtIO block device with an explicit firmware boot priority.
+            if (LimboApplication.arch == Config.Arch.arm64
+                    && getMachineType() != null && getMachineType().startsWith("virt")) {
+                String id = "ruscDisk" + index;
+                paramsList.add("-drive");
+                paramsList.add("if=none,id=" + id + ",file=" + imagePath);
+                boolean cdFirst = "CDROM".equals(getMachine().getBootDevice())
+                        && getMachine().getCdImagePath() != null
+                        && !getMachine().getCdImagePath().trim().isEmpty();
+                paramsList.add("-device");
+                paramsList.add("virtio-blk-pci,drive=" + id + ",bootindex=" +
+                        (index + (cdFirst ? 2 : 1)));
+                return;
+            }
             if (Config.legacyDrives) {
                 switch (index) {
                     case 0:
@@ -598,8 +613,19 @@ private String getQemuLibrary() {
 
     public void addRemovableDrives(ArrayList<String> paramsList) {
         String cdImagePath = getDriveFilePath(getMachine().getCdImagePath());
-        if (cdImagePath != null) {
-            if (Config.legacyDrives) {
+        if (cdImagePath != null && !cdImagePath.trim().isEmpty()) {
+            // The virt machine cannot expose an IDE CD drive. A VirtIO SCSI
+            // controller plus scsi-cd works for EFI-capable AArch64 ISO images.
+            if (LimboApplication.arch == Config.Arch.arm64
+                    && getMachineType() != null && getMachineType().startsWith("virt")) {
+                paramsList.add("-device");
+                paramsList.add("virtio-scsi-pci,id=ruscScsi");
+                paramsList.add("-drive");
+                paramsList.add("if=none,id=ruscCd,media=cdrom,readonly=on,format=raw,file=" + cdImagePath);
+                paramsList.add("-device");
+                paramsList.add("scsi-cd,bus=ruscScsi.0,drive=ruscCd,bootindex=" +
+                        ("CDROM".equals(getMachine().getBootDevice()) ? "1" : "5"));
+            } else if (Config.legacyDrives) {
                 paramsList.add("-cdrom");
                 paramsList.add(cdImagePath);
             } else {
