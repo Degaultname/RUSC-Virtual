@@ -144,6 +144,7 @@ public class Dispatcher implements ViewListener {
                 break;
             case MEDIA_INTERFACE:
                 setDriveMediaInterface(value);
+                break;
             case SOUNDCARD:
                 getMachine().setSoundCard(convertString(property, value));
                 break;
@@ -215,6 +216,7 @@ public class Dispatcher implements ViewListener {
                 break;
             case EXTRA_PARAMS:
                 getMachine().setExtraParams(convertString(property,value));
+                break;
             default:
                 throw new RuntimeException("Umapped UI field: " + property);
         }
