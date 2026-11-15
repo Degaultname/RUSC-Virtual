@@ -2423,7 +2423,7 @@ public class LimboActivity extends AppCompatActivity
     public void onDestroy() {
         savePendingEditText();
         MachineController.getInstance().removeOnStatusChangeListener(this);
-        getMachine().deleteObserver(LimboActivity.this);
+        if (getMachine() != null) getMachine().deleteObserver(LimboActivity.this);
         setViewListener(null);
         super.onDestroy();
     }
