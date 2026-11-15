@@ -1,0 +1,67 @@
+name: Gerar biblioteca Limbo para Sketchware
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/library-sketchware.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-aar:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 35
+    steps:
+      - name: Abrir fontes do Limbo
+        uses: actions/checkout@v4
+
+      - name: Instalar Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Instalar SDK Android
+        uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+
+      - name: Instalar Android 29
+        run: sdkmanager "platforms;android-29" "build-tools;29.0.3"
+
+      - name: Preparar Java 11
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '11'
+
+      - name: Preparar Gradle 6.5
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '6.5'
+
+      - name: Remover repositorio de dependencias antigo
+        run: sed -i 's/jcenter()/mavenCentral()/g' build.gradle
+
+      - name: Compilar biblioteca Limbo Android (AAR)
+        run: gradle :limbo-android-lib:assembleDebug --no-daemon --stacktrace
+
+      - name: Verificar AAR
+        run: |
+          set -e
+          AAR="limbo-android-lib/build/outputs/aar/limbo-android-lib-debug.aar"
+          test -f "$AAR"
+          unzip -Z1 "$AAR" | grep -x 'classes.jar'
+          unzip -Z1 "$AAR" | grep -x 'AndroidManifest.xml'
+          unzip -Z1 "$AAR" | grep -x 'R.txt'
+          ls -lh "$AAR"
+
+      - name: Disponibilizar AAR para Sketchware Pro
+        uses: actions/upload-artifact@v4
+        with:
+          name: Biblioteca-Limbo-para-Sketchware
+          path: limbo-android-lib/build/outputs/aar/limbo-android-lib-debug.aar
+          if-no-files-found: error
