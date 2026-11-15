@@ -26,6 +26,8 @@ jobs:
 
       - name: Configurar Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
 
       - name: Instalar SDK Android 29
         run: sdkmanager "platforms;android-29" "build-tools;29.0.3"
