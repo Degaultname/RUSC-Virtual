@@ -48,3 +48,17 @@ tasks.all { task ->
         task.enabled = false
     }
 }
+
+// Maven publication for use in Sketchware Pro via JitPack.
+apply plugin: 'maven-publish'
+
+publishing {
+    publications {
+        release(MavenPublication) {
+            groupId = 'com.github.Degaultname.RUSC-Virtual'
+            artifactId = 'limbo-android-lib'
+            version = System.getenv('JITPACK_VERSION') ?: '0.1'
+            afterEvaluate { from components.release }
+        }
+    }
+}
