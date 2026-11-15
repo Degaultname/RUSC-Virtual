@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ['.github/workflows/export-sketchware-local-lib.yml']
+    paths: ['.github/workflows/export-sketchware-local-lib.yml', 'limbo-android-lib/src/main/java/com/max2idea/android/limbo/machine/MachineService.java']
 permissions:
   contents: read
 
