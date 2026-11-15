@@ -174,7 +174,7 @@ public class MachineService extends Service {
         }
         Intent intent = new Intent(service.getApplicationContext(), Config.clientClass);
         PendingIntent pi = PendingIntent.getActivity(service.getApplicationContext(), 0, intent,
-                PendingIntent.FLAG_UPDATE_CURRENT);
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel chan = new NotificationChannel(Config.notificationChannelID, Config.notificationChannelName, NotificationManager.IMPORTANCE_NONE);
             NotificationManager notifService = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
