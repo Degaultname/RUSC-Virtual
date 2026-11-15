@@ -1,0 +1,55 @@
+name: Empacotar biblioteca Limbo local para Sketchware
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/export-sketchware-local-lib.yml']
+permissions:
+  contents: read
+
+jobs:
+  local-lib:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17' }
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+      - run: sdkmanager "platforms;android-29" "build-tools;29.0.3"
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '11' }
+      - uses: gradle/actions/setup-gradle@v4
+        with: { gradle-version: '6.5' }
+      - run: sed -i 's/jcenter()/mavenCentral()/g' build.gradle
+      - name: Compilar Limbo Java e recursos em AAR
+        run: gradle :limbo-android-lib:assembleDebug --no-daemon --stacktrace
+      - name: Converter AAR para formato de biblioteca local Sketchware Pro
+        shell: bash
+        run: |
+          set -euo pipefail
+          AAR="limbo-android-lib/build/outputs/aar/limbo-android-lib-debug.aar"
+          mkdir -p /tmp/classes /tmp/dex dist/RUSC_Limbo/res
+          unzip -p "$AAR" classes.jar > /tmp/classes/classes.jar
+          cp /tmp/classes/classes.jar dist/RUSC_Limbo/classes.jar
+          unzip -q "$AAR" 'res/*' -d /tmp/limbo-res
+          cp -a /tmp/limbo-res/res/. dist/RUSC_Limbo/res/
+          "$ANDROID_HOME/build-tools/29.0.3/d8" --min-api 21 \
+              --lib "$ANDROID_HOME/platforms/android-29/android.jar" \
+              --output /tmp/dex /tmp/classes/classes.jar
+          cp /tmp/dex/classes.dex dist/RUSC_Limbo/classes.dex
+          printf 'com.limbo.emu.lib' > dist/RUSC_Limbo/config
+          printf 'Limbo emulator (GPL-2.0-or-later). Source: https://github.com/limboemu/limbo\n' > dist/RUSC_Limbo/LICENSE_NOTICE.txt
+          ls -lh dist/RUSC_Limbo/classes.*
+          test -s dist/RUSC_Limbo/classes.dex
+          test -s dist/RUSC_Limbo/classes.jar
+          test -s dist/RUSC_Limbo/res/layout/limbo_main.xml
+      - name: Enviar pacote Sketchware
+        uses: actions/upload-artifact@v4
+        with:
+          name: RUSC-Limbo-Local-Library
+          path: dist/RUSC_Limbo/
+          if-no-files-found: error
