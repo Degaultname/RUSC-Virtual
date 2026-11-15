@@ -158,7 +158,13 @@ public class Logger {
 
     public static void viewLimboLog(final Activity activity) {
 
-        String contents = FileUtils.getFileContents(Config.logFilePath);
+        // Early failures may happen before the log destination was initialized.
+        String path = Config.logFilePath;
+        String contents = (path == null || path.trim().isEmpty()) ? "" : FileUtils.getFileContents(path);
+        if (contents.isEmpty()) {
+            contents = "Log do Limbo indisponivel: a VM pode ter encerrado antes do registro iniciar.\\n" +
+                "Consulte o Android logcat para identificar a falha original de inicializacao.";
+        }
 
         if (contents.length() > 50 * 1024)
             contents = contents.substring(0, 25 * 1024)
@@ -176,6 +182,8 @@ public class Logger {
                 } else {
                     try {
                         Intent intent = new Intent(Intent.ACTION_EDIT);
+                        if (Config.logFilePath == null || Config.logFilePath.trim().isEmpty())
+                            throw new IOException("Log file path not initialized");
                         File file = new File(Config.logFilePath);
                         Uri uri = Uri.fromFile(file);
                         intent.setDataAndType(uri, "text/plain");
