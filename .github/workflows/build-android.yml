@@ -1,10 +1,12 @@
-name: Compilar RUSC Virtual (base Limbo)
+name: Compilar RUSC Virtual com QEMU
 
 on:
   push:
     branches: [main]
     paths:
       - '.github/workflows/build-android.yml'
+      - 'limbo-android-arm/**'
+      - 'limbo-android-lib/**'
   workflow_dispatch:
 
 permissions:
@@ -13,46 +15,76 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-22.04
-    timeout-minutes: 40
+    timeout-minutes: 45
     steps:
       - name: Baixar codigo
         uses: actions/checkout@v4
 
-      - name: Configurar Java 17 para Android SDK
+      - name: Instalar Java 17 para o SDK
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Configurar Android SDK
+      - name: Instalar Android SDK
         uses: android-actions/setup-android@v3
         with:
           packages: platform-tools
 
-      - name: Instalar SDK Android 29
+      - name: Instalar plataforma Android 29
         run: sdkmanager "platforms;android-29" "build-tools;29.0.3"
 
-      - name: Configurar Java 11 para Gradle antigo
+      - name: Baixar bibliotecas nativas originais do Limbo
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="https://github.com/limboemu/limbo/releases/download/v6.0.1-LimboEmulator/limbo-android-arm-6.0.1-qemu-5.1.0.apk"
+          curl -fL --retry 3 --connect-timeout 20 "$URL" -o /tmp/limbo-official.apk
+          unzip -q /tmp/limbo-official.apk 'lib/*' -d /tmp/limbo-native
+          mkdir -p limbo-android-arm/src/main/jniLibs
+          cp -a /tmp/limbo-native/lib/. limbo-android-arm/src/main/jniLibs/
+          echo "Bibliotecas por arquitetura:"
+          find limbo-android-arm/src/main/jniLibs -name '*.so' -type f | sort
+          echo "Verificando o QEMU e a camada JNI:"
+          test -n "$(find limbo-android-arm/src/main/jniLibs -name 'libqemu-system-aarch64.so' -print -quit)"
+          test -n "$(find limbo-android-arm/src/main/jniLibs -name 'liblimbo.so' -print -quit)"
+          du -sh limbo-android-arm/src/main/jniLibs
+
+      - name: Ajustar nome temporario do aplicativo
+        run: |
+          sed -i 's/Limbo ARM Emulator/RUSC Virtual/g; s/Limbo ARM/RUSC Virtual/g' limbo-android-arm/src/main/AndroidManifest.xml
+          sed -i 's/Limbo ARM Emulator/RUSC Virtual/g; s/Limbo ARM/RUSC Virtual/g' limbo-android-arm/src/main/res/values/strings.xml
+
+      - name: Configurar Java 11 para Gradle legado
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '11'
 
-      - name: Configurar Gradle 6.5
+      - name: Instalar Gradle 6.5
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '6.5'
 
-      - name: Ajustar repositorios descontinuados
+      - name: Atualizar repositorios Gradle antigos
         run: sed -i 's/jcenter()/mavenCentral()/g' build.gradle
 
-      - name: Compilar aplicativo-base
+      - name: Compilar APK com bibliotecas nativas
         run: gradle :limbo-android-arm:assembleDebug --no-daemon --stacktrace
 
-      - name: Guardar APK de teste
-        if: success()
+      - name: Validar motor dentro do APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="limbo-android-arm/build/outputs/apk/debug/limbo-android-arm-debug.apk"
+          test -f "$APK"
+          unzip -Z1 "$APK" | grep -E 'lib/[^/]+/libqemu-system-aarch64.so'
+          unzip -Z1 "$APK" | grep -E 'lib/[^/]+/liblimbo.so'
+          ls -lh "$APK"
+
+      - name: Publicar APK de teste
         uses: actions/upload-artifact@v4
         with:
-          name: RUSC-Virtual-base-debug
+          name: RUSC-Virtual-QEMU-debug
           path: limbo-android-arm/build/outputs/apk/debug/*.apk
           if-no-files-found: error
