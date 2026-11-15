@@ -740,10 +740,10 @@ public class LimboSDLActivity extends SDLActivity
         if (mGap != null)
             mGap.setVisibility(View.GONE);
         if (mSurface != null) {
-            android.view.ViewGroup.LayoutParams lp = mSurface.getLayoutParams();
+            android.view.ViewGroup.LayoutParams lp = ((LimboSDLSurface)mSurface).getLayoutParams();
             if (lp == null || lp.width != android.view.ViewGroup.LayoutParams.MATCH_PARENT
                     || lp.height != android.view.ViewGroup.LayoutParams.MATCH_PARENT) {
-                mSurface.setLayoutParams(new RelativeLayout.LayoutParams(
+                ((LimboSDLSurface)mSurface).setLayoutParams(new RelativeLayout.LayoutParams(
                         RelativeLayout.LayoutParams.MATCH_PARENT,
                         RelativeLayout.LayoutParams.MATCH_PARENT));
             }
