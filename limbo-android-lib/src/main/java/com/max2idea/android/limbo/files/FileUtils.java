@@ -161,6 +161,7 @@ public class FileUtils {
     }
 
     public static String getFileContents(String filePath) {
+        if (filePath == null || filePath.trim().isEmpty()) return "";
         File file = new File(filePath);
         if (!file.exists())
             return "";
