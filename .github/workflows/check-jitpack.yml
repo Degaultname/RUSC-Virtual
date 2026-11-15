@@ -1,0 +1,37 @@
+name: Verificar dependency JitPack Sketchware
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/check-jitpack.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validar-dependency:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Verificar POM da biblioteca Limbo
+        shell: bash
+        run: |
+          set -euo pipefail
+          V=1859422
+          BASE="https://jitpack.io/com/github/Degaultname/RUSC-Virtual/limbo-android-lib/$V"
+          echo "Procurando POM no JitPack..."
+          curl -fL --retry 3 --retry-delay 5 --max-time 600 "$BASE/limbo-android-lib-$V.pom" -o /tmp/limbo.pom
+          echo "POM:"
+          head -c 2000 /tmp/limbo.pom
+          echo ""
+      - name: Baixar AAR publicado
+        shell: bash
+        run: |
+          set -euo pipefail
+          V=1859422
+          BASE="https://jitpack.io/com/github/Degaultname/RUSC-Virtual/limbo-android-lib/$V"
+          curl -fL --retry 3 --retry-delay 5 --max-time 600 "$BASE/limbo-android-lib-$V.aar" -o /tmp/limbo.aar
+          unzip -Z1 /tmp/limbo.aar | grep classes.jar
+          ls -lh /tmp/limbo.aar
