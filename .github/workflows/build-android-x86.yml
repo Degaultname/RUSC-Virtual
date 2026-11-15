@@ -1,0 +1,86 @@
+name: Compilar RUSC Virtual Android x86
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/build-android-x86.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    steps:
+      - name: Baixar codigo
+        uses: actions/checkout@v4
+
+      - name: Java 17 para Android SDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Configurar Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+
+      - name: Instalar Android 29
+        run: sdkmanager "platforms;android-29" "build-tools;29.0.3"
+
+      - name: Importar motor QEMU x86 oficial
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="https://github.com/limboemu/limbo/releases/download/v6.0.1-LimboEmulator/limbo-android-x86-6.0.1-qemu-5.1.0.apk"
+          curl -fL --retry 3 --connect-timeout 20 "$URL" -o /tmp/limbo-x86.apk
+          unzip -q /tmp/limbo-x86.apk 'lib/*' -d /tmp/native
+          mkdir -p limbo-android-x86/src/main/jniLibs
+          cp -a /tmp/native/lib/. limbo-android-x86/src/main/jniLibs/
+          echo "Bibliotecas QEMU presentes:"
+          find limbo-android-x86/src/main/jniLibs -name 'libqemu-system-*.so' -type f | sort
+          test -n "$(find limbo-android-x86/src/main/jniLibs -name 'libqemu-system-x86_64.so' -print -quit)"
+          test -n "$(find limbo-android-x86/src/main/jniLibs -name 'liblimbo.so' -print -quit)"
+
+      - name: Alterar titulo para RUSC Virtual x86
+        run: |
+          sed -i 's/Limbo x86 PC Emulator/RUSC Virtual x86/g; s/Limbo x86/RUSC Virtual x86/g' limbo-android-x86/src/main/AndroidManifest.xml
+          sed -i 's/Limbo x86 PC Emulator/RUSC Virtual x86/g; s/Limbo x86/RUSC Virtual x86/g' limbo-android-x86/src/main/res/values/strings.xml
+
+      - name: Usar Java 11 com Gradle antigo
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '11'
+
+      - name: Preparar Gradle 6.5
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '6.5'
+
+      - name: Atualizar repositorios descontinuados
+        run: sed -i 's/jcenter()/mavenCentral()/g' build.gradle
+
+      - name: Compilar APK com QEMU x86
+        run: gradle :limbo-android-x86:assembleDebug --no-daemon --stacktrace
+
+      - name: Conferir motor no APK final
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="limbo-android-x86/build/outputs/apk/debug/limbo-android-x86-debug.apk"
+          test -f "$APK"
+          unzip -Z1 "$APK" | grep -E 'lib/[^/]+/libqemu-system-x86_64.so'
+          unzip -Z1 "$APK" | grep -E 'lib/[^/]+/liblimbo.so'
+          ls -lh "$APK"
+
+      - name: Disponibilizar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: RUSC-Virtual-Android-x86
+          path: limbo-android-x86/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
