@@ -1,6 +1,10 @@
 name: Compilar RUSC Virtual (base Limbo)
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/build-android.yml'
   workflow_dispatch:
 
 permissions:
@@ -14,7 +18,19 @@ jobs:
       - name: Baixar codigo
         uses: actions/checkout@v4
 
-      - name: Configurar Java 11
+      - name: Configurar Java 17 para Android SDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Configurar Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Instalar SDK Android 29
+        run: sdkmanager "platforms;android-29" "build-tools;29.0.3"
+
+      - name: Configurar Java 11 para Gradle antigo
         uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -24,12 +40,6 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '6.5'
-
-      - name: Configurar Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Instalar SDK Android 29
-        run: sdkmanager "platforms;android-29" "build-tools;29.0.3"
 
       - name: Ajustar repositorios descontinuados
         run: sed -i 's/jcenter()/mavenCentral()/g' build.gradle
