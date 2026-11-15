@@ -538,10 +538,15 @@ public class LimboSDLActivity extends SDLActivity
 
         setupKeyMapManager();
         RelativeLayout mLayout = (RelativeLayout) findViewById(R.id.sdl);
-        mLayout.addView(mSurface);
+        // Use all available screen estate; default SurfaceView sizes can leave
+        // an unused lower half on tall portrait phones.
+        mLayout.addView(mSurface, new RelativeLayout.LayoutParams(
+                RelativeLayout.LayoutParams.MATCH_PARENT,
+                RelativeLayout.LayoutParams.MATCH_PARENT));
 
         mGap = (View) findViewById(R.id.gap);
         updateLayout(getResources().getConfiguration().orientation);
+        enableRuscImmersiveDisplay();
 
     }
 
@@ -730,10 +735,40 @@ public class LimboSDLActivity extends SDLActivity
     }
 
     public void updateLayout(int orientation) {
-        if (orientation == Configuration.ORIENTATION_PORTRAIT)
-            mGap.setVisibility(View.VISIBLE);
-        else
+        // Older Limbo deliberately showed a weighted gap beneath SDL in
+        // portrait mode. The RUSC interface always uses the entire viewport.
+        if (mGap != null)
             mGap.setVisibility(View.GONE);
+        if (mSurface != null) {
+            android.view.ViewGroup.LayoutParams lp = mSurface.getLayoutParams();
+            if (lp == null || lp.width != android.view.ViewGroup.LayoutParams.MATCH_PARENT
+                    || lp.height != android.view.ViewGroup.LayoutParams.MATCH_PARENT) {
+                mSurface.setLayoutParams(new RelativeLayout.LayoutParams(
+                        RelativeLayout.LayoutParams.MATCH_PARENT,
+                        RelativeLayout.LayoutParams.MATCH_PARENT));
+            }
+        }
+    }
+
+    private void enableRuscImmersiveDisplay() {
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
+                WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        getWindow().getDecorView().setSystemUiVisibility(
+                View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                | View.SYSTEM_UI_FLAG_FULLSCREEN
+                | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
+        View toolbar = findViewById(R.id.toolbar);
+        if (toolbar != null) {
+            toolbar.setVisibility(View.GONE);
+            android.view.ViewGroup.LayoutParams lp = toolbar.getLayoutParams();
+            if (lp != null) {
+                lp.height = 0;
+                toolbar.setLayoutParams(lp);
+            }
+        }
     }
 
     public void promptSDLDisplay() {
@@ -885,7 +920,7 @@ public class LimboSDLActivity extends SDLActivity
     //XXX: We want to suspend only when app is calling onPause()
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
-
+        if (hasFocus) enableRuscImmersiveDisplay();
     }
 
     public void sendRightClick() {
