@@ -178,6 +178,8 @@ public class LimboApplication extends Application {
         MachineOpenHelper.initialize(this);
         FavOpenHelper.initialize(this);
         setupFolders();
+        // Initialize a stable log path even if QEMU crashes during early startup.
+        com.max2idea.android.limbo.log.Logger.setupLogFile("/rusc-limbo.log");
     }
 
     private void setupFolders() {
