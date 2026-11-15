@@ -1,10 +1,11 @@
-name: Compilar RUSC Virtual Android x86
+name: RUSC Virtual - Sketchware + QEMU
 
 on:
   push:
     branches: [main]
     paths:
       - '.github/workflows/build-android-x86.yml'
+      - 'limbo-android-x86/**'
   workflow_dispatch:
 
 permissions:
@@ -81,6 +82,6 @@ jobs:
       - name: Disponibilizar APK
         uses: actions/upload-artifact@v4
         with:
-          name: RUSC-Virtual-Android-x86
+          name: RUSC-Virtual-Sketchware-QEMU
           path: limbo-android-x86/build/outputs/apk/debug/*.apk
           if-no-files-found: error
